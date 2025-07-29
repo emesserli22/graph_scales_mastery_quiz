@@ -32,7 +32,7 @@
       font-size: 16px;
       padding: 5px;
       width: 100%;
-      max-width: 300px;
+      max-width: 400px;
       box-sizing: border-box;
     }
     #score {
@@ -52,19 +52,6 @@
       display: block;
       margin-left: auto;
       margin-right: auto;
-    }
-    .input-container {
-      position: relative;
-      width: 500px;
-      height: 500px;
-      margin: 0 auto;
-    }
-    .axis-input {
-      position: absolute;
-      width: 40px;
-      font-size: 14px;
-      padding: 2px 4px;
-      text-align: center;
     }
   </style>
 </head>
@@ -378,82 +365,6 @@
           disableInputs();
           updateScore();
         };
-      } else if (q.type === "axis-values" && q.includeNegatives) {
-        const canvas = document.createElement("canvas");
-        canvas.width = 500;
-        canvas.height = 500;
-        graphContainer.appendChild(canvas);
-
-        drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false, [], [], true);
-
-        const inputContainer = document.createElement("div");
-        inputContainer.className = "input-container";
-        inputContainer.style.position = "relative";
-        inputContainer.style.width = canvas.width + "px";
-        inputContainer.style.height = canvas.height + "px";
-        graphContainer.appendChild(inputContainer);
-
-        const margin = 40;
-        const intervalsX = q.xValues.length - 1;
-        const intervalsY = q.yValues.length - 1;
-        const gridWidth = canvas.width - 2 * margin;
-        const gridHeight = canvas.height - 2 * margin;
-        const pxPerIntervalX = gridWidth / intervalsX;
-        const pxPerIntervalY = gridHeight / intervalsY;
-        const originX = margin + intervalsX / 2 * pxPerIntervalX;
-        const originY = margin + intervalsY / 2 * pxPerIntervalY;
-
-        q.xValues.forEach((val, i) => {
-          const input = document.createElement("input");
-          input.type = "text";
-          input.size = 4;
-          input.className = "axis-input";
-          input.style.position = "absolute";
-          input.style.left = (margin + i * pxPerIntervalX - 20) + "px";
-          input.style.top = (originY + 10) + "px";
-          input.id = `x-input-${i}`;
-          inputContainer.appendChild(input);
-        });
-
-        q.yValues.forEach((val, i) => {
-          const input = document.createElement("input");
-          input.type = "text";
-          input.size = 4;
-          input.className = "axis-input";
-          input.style.position = "absolute";
-          input.style.left = (originX - 50) + "px";
-          input.style.top = (margin + i * pxPerIntervalY - 10) + "px";
-          input.id = `y-input-${i}`;
-          inputContainer.appendChild(input);
-        });
-
-        answerArea.innerHTML = `<button id="submit-btn">Submit</button>`;
-        answerArea.appendChild(inputContainer);
-
-        document.getElementById("submit-btn").onclick = () => {
-          const xUserValues = q.xValues.map((_, i) => {
-            const val = document.getElementById(`x-input-${i}`).value.trim();
-            return parseFloat(val);
-          });
-          const yUserValues = q.yValues.map((_, i) => {
-            const val = document.getElementById(`y-input-${i}`).value.trim();
-            return parseFloat(val);
-          });
-
-          const xCorrect = q.xValues.map(v => parseFloat(v.toFixed(5)));
-          const yCorrect = q.yValues.map(v => parseFloat(v.toFixed(5)));
-
-          if (arraysEqualNumbers(xUserValues, xCorrect) && arraysEqualNumbers(yUserValues, yCorrect)) {
-            feedback.textContent = "Correct!";
-            score++;
-          } else {
-            feedback.innerHTML = `Incorrect.<br>Correct x-axis values: <strong>${q.xValues.join(", ")}</strong><br>Correct y-axis values: <strong>${q.yValues.join(", ")}</strong>`;
-          }
-          nextBtn.style.display = "inline-block";
-          disableInputs();
-          updateScore();
-        };
-
       } else if (q.type === "axis-values") {
         answerArea.innerHTML = `
           <label for="x-values-input">x-axis values (comma separated): </label><br />
