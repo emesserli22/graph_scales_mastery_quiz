@@ -69,13 +69,31 @@
       return scale.toString();
     }
 
+    // Helper: generate random subset of tick indices to label (excluding first tick)
+    // totalTicks: total number of ticks on axis
+    // minLabels, maxLabels: range of how many ticks to label (excluding first blank)
+    function randomTickLabels(totalTicks, minLabels, maxLabels) {
+      const count = Math.floor(Math.random() * (maxLabels - minLabels + 1)) + minLabels;
+      const possibleTicks = [];
+      for (let i = 1; i < totalTicks; i++) {
+        possibleTicks.push(i);
+      }
+      // Shuffle and pick count ticks
+      for (let i = possibleTicks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [possibleTicks[i], possibleTicks[j]] = [possibleTicks[j], possibleTicks[i]];
+      }
+      return possibleTicks.slice(0, count).sort((a,b) => a-b);
+    }
+
     // Draw Cartesian grid on canvas
     // Parameters:
     // canvas: canvas element
     // xScale, yScale: scale per interval
     // quadrants: 1 or 4
-    // labelEveryOtherTick: boolean - if true, label only every other tick
-    function drawGrid(canvas, xScale, yScale, quadrants, labelEveryOtherTick = false) {
+    // partialLabels: boolean - if true, label only some ticks with first tick blank
+    // partialLabelIndicesX, partialLabelIndicesY: arrays of tick indices to label (for partialLabels)
+    function drawGrid(canvas, xScale, yScale, quadrants, partialLabels = false, partialLabelIndicesX = [], partialLabelIndicesY = []) {
       const ctx = canvas.getContext('2d');
       const width = canvas.width;
       const height = canvas.height;
@@ -148,16 +166,21 @@
         ctx.lineTo(x, originY + tickHeight / 2);
         ctx.stroke();
 
-        // Label every tick or every other tick
-        if (!labelEveryOtherTick || i % 2 === 0) {
-          let labelValue;
-          if (quadrants === 1) {
-            labelValue = formatScale(xScale * i);
-          } else {
-            labelValue = formatScale(xScale * (i - intervalsX));
-          }
-          ctx.fillText(labelValue, x, originY + tickHeight + 2);
+        // Label logic
+        if (partialLabels) {
+          // First tick label blank
+          if (i === 0) continue;
+          // Label only if i in partialLabelIndicesX
+          if (!partialLabelIndicesX.includes(i)) continue;
         }
+
+        let labelValue;
+        if (quadrants === 1) {
+          labelValue = formatScale(xScale * i);
+        } else {
+          labelValue = formatScale(xScale * (i - intervalsX));
+        }
+        ctx.fillText(labelValue, x, originY + tickHeight + 2);
       }
 
       ctx.textAlign = 'right';
@@ -172,15 +195,18 @@
         ctx.lineTo(originX + tickWidth / 2, y);
         ctx.stroke();
 
-        if (!labelEveryOtherTick || i % 2 === 0) {
-          // y-axis labels go top to bottom
-          let labelValue = formatScale(yScale * (intervalsY - i));
-          ctx.fillText(labelValue, originX - tickWidth - 4, y);
+        if (partialLabels) {
+          if (i === 0) continue;
+          if (!partialLabelIndicesY.includes(i)) continue;
         }
+
+        // y-axis labels go top to bottom
+        let labelValue = formatScale(yScale * (intervalsY - i));
+        ctx.fillText(labelValue, originX - tickWidth - 4, y);
       }
     }
 
-    // Generate scale-identify question with optional partial labels
+    // Generate scale-identify question with optional partial labels and tick label indices
     function generateScaleQuestion(quadrants, partialLabels = false) {
       const xScale = scales[Math.floor(Math.random() * scales.length)];
       const yScale = scales[Math.floor(Math.random() * scales.length)];
@@ -196,6 +222,20 @@
         quadrantDesc = "All four quadrants (negative and positive x and y)";
       }
 
+      // For partial labels, generate random tick label indices for x and y axes
+      let partialLabelIndicesX = [];
+      let partialLabelIndicesY = [];
+      if (partialLabels) {
+        const intervalsX = quadrants === 1 ? 10 : 5;
+        const intervalsY = quadrants === 1 ? 10 : 5;
+        const totalTicksX = intervalsX * (quadrants === 4 ? 2 : 1);
+        const totalTicksY = intervalsY * (quadrants === 4 ? 2 : 1);
+
+        // Label between 3 and 6 ticks (excluding first tick)
+        partialLabelIndicesX = randomTickLabels(totalTicksX, 3, 6);
+        partialLabelIndicesY = randomTickLabels(totalTicksY, 3, 6);
+      }
+
       return {
         type: "scale-identify",
         questionText: `Identify the scale on the x-axis and y-axis for the following Cartesian coordinate grid:<br>
@@ -206,7 +246,9 @@
         xScale,
         yScale,
         quadrants,
-        partialLabels
+        partialLabels,
+        partialLabelIndicesX,
+        partialLabelIndicesY
       };
     }
 
@@ -227,10 +269,11 @@
       };
     }
 
-    // Build questions array with 5 scale-identify and 2 axis-values questions
+    // Build questions array with 10 questions total:
+    // 5 scale-identify (2 with partial labels), 5 axis-values
     const questions = [];
 
-    // For 5 scale-identify questions, randomly pick 2 to have partial labels
+    // Pick 2 unique indices from 0 to 4 for partial label scale-identify questions
     const partialLabelIndices = new Set();
     while (partialLabelIndices.size < 2) {
       partialLabelIndices.add(Math.floor(Math.random() * 5));
@@ -244,12 +287,12 @@
     for (let i = 2; i < 5; i++) {
       questions.push(generateScaleQuestion(4, partialLabelIndices.has(i)));
     }
-    // 2 axis-values questions
-    for (let i = 0; i < 2; i++) {
+    // 5 axis-values questions
+    for (let i = 0; i < 5; i++) {
       questions.push(generateAxisValuesQuestion());
     }
 
-    // Shuffle questions
+    // Shuffle all questions
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -286,7 +329,7 @@
         canvas.height = 500;
         graphContainer.appendChild(canvas);
 
-        drawGrid(canvas, q.xScale, q.yScale, q.quadrants, q.partialLabels);
+        drawGrid(canvas, q.xScale, q.yScale, q.quadrants, q.partialLabels, q.partialLabelIndicesX, q.partialLabelIndicesY);
 
         answerArea.innerHTML = `
           <label for="x-scale-input">Scale on x-axis: </label>
