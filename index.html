@@ -21,6 +21,7 @@
       background: white;
       border-radius: 8px;
       box-shadow: 0 0 5px #ccc;
+      position: relative;
     }
     button {
       margin-top: 10px;
@@ -32,6 +33,7 @@
       padding: 5px;
       width: 100%;
       max-width: 300px;
+      box-sizing: border-box;
     }
     #score {
       font-weight: bold;
@@ -50,6 +52,20 @@
       display: block;
       margin-left: auto;
       margin-right: auto;
+    }
+    /* Container for inputs on graph */
+    .input-container {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      margin: 0 auto;
+    }
+    .axis-input {
+      position: absolute;
+      width: 40px;
+      font-size: 14px;
+      padding: 2px 4px;
+      text-align: center;
     }
   </style>
 </head>
@@ -252,25 +268,45 @@
       };
     }
 
-    function generateAxisValuesQuestion() {
+    // Generate axis-values question, optionally with negatives
+    function generateAxisValuesQuestion(includeNegatives = false) {
       const xScale = scales[Math.floor(Math.random() * scales.length)];
       const yScale = scales[Math.floor(Math.random() * scales.length)];
       const intervals = 5;
 
+      let xValues, yValues, questionText;
+
+      if (includeNegatives) {
+        // Values from -intervals to +intervals
+        xValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(xScale * (i - intervals)).toFixed(5));
+        yValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(yScale * (i - intervals)).toFixed(5));
+        questionText = `Write the values on the axes below given the following scales:<br>
+          - The interval for the x-axis is ${formatScale(xScale)}<br>
+          - The interval for the y-axis is ${formatScale(yScale)}<br>
+          - There are ${intervals} intervals on each side of zero, so please provide the first ${intervals * 2 + 1} values starting from negative to positive.<br>
+          Question: List the values on the x-axis and y-axis at each interval.`;
+      } else {
+        // Positive only as before
+        xValues = Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5));
+        yValues = Array.from({length: intervals + 1}, (_, i) => +(yScale * i).toFixed(5));
+        questionText = `Write the values on the axes below given the following scales:<br>
+          - The interval for the x-axis is ${formatScale(xScale)}<br>
+          - The interval for the y-axis is ${formatScale(yScale)}<br>
+          - There are ${intervals} intervals on each axis, so please provide the first ${intervals + 1} values starting at 0.<br>
+          Question: List the values on the x-axis and y-axis at each interval.`;
+      }
+
       return {
         type: "axis-values",
-        questionText: `Write the values on the axes below given the following scales:<br>
-        - The interval for the x-axis is ${formatScale(xScale)}<br>
-        - The interval for the y-axis is ${formatScale(yScale)}<br>
-        - There are 5 intervals on each axis, so please provide the first 6 values starting at 0.<br>
-        Question: List the values on the x-axis and y-axis at each interval.`,
-        xValues: Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5)),
-        yValues: Array.from({length: intervals + 1}, (_, i) => +(yScale * i).toFixed(5))
+        questionText,
+        xValues,
+        yValues,
+        includeNegatives
       };
     }
 
     // Build questions array with 10 questions total:
-    // 5 scale-identify (2 with partial labels), 5 axis-values
+    // 5 scale-identify (2 with partial labels), 5 axis-values (2 with negatives)
     const questions = [];
 
     // Pick 2 unique indices from 0 to 4 for partial label scale-identify questions
@@ -287,9 +323,14 @@
     for (let i = 2; i < 5; i++) {
       questions.push(generateScaleQuestion(4, partialLabelIndices.has(i)));
     }
-    // 5 axis-values questions
-    for (let i = 0; i < 5; i++) {
-      questions.push(generateAxisValuesQuestion());
+
+    // 3 axis-values questions positive only
+    for (let i = 0; i < 3; i++) {
+      questions.push(generateAxisValuesQuestion(false));
+    }
+    // 2 axis-values questions with negatives
+    for (let i = 0; i < 2; i++) {
+      questions.push(generateAxisValuesQuestion(true));
     }
 
     // Shuffle all questions
@@ -358,7 +399,86 @@
           disableInputs();
           updateScore();
         };
+      } else if (q.type === "axis-values" && q.includeNegatives) {
+        // Axis-values question with negatives: inputs on graph
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 500;
+        canvas.height = 500;
+        graphContainer.appendChild(canvas);
+
+        // Draw grid with all labels visible
+        drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false);
+
+        // Create container for inputs positioned over canvas
+        const inputContainer = document.createElement("div");
+        inputContainer.className = "input-container";
+        graphContainer.appendChild(inputContainer);
+
+        const margin = 40;
+        const intervalsX = q.xValues.length - 1;
+        const intervalsY = q.yValues.length - 1;
+        const gridWidth = canvas.width - 2 * margin;
+        const gridHeight = canvas.height - 2 * margin;
+        const pxPerIntervalX = gridWidth / intervalsX;
+        const pxPerIntervalY = gridHeight / intervalsY;
+        const originX = margin + intervalsX / 2 * pxPerIntervalX;
+        const originY = margin + intervalsY / 2 * pxPerIntervalY;
+
+        // Create x-axis inputs
+        q.xValues.forEach((val, i) => {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.size = 4;
+          input.className = "axis-input";
+          input.style.left = (margin + i * pxPerIntervalX - 20) + "px";
+          input.style.top = (originY + 10) + "px";
+          input.id = `x-input-${i}`;
+          inputContainer.appendChild(input);
+        });
+
+        // Create y-axis inputs
+        q.yValues.forEach((val, i) => {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.size = 4;
+          input.className = "axis-input";
+          input.style.left = (originX - 50) + "px";
+          input.style.top = (margin + i * pxPerIntervalY - 10) + "px";
+          input.id = `y-input-${i}`;
+          inputContainer.appendChild(input);
+        });
+
+        // Submit button below inputs
+        answerArea.innerHTML = `<button id="submit-btn">Submit</button>`;
+        answerArea.appendChild(inputContainer);
+
+        document.getElementById("submit-btn").onclick = () => {
+          const xUserValues = q.xValues.map((_, i) => {
+            const val = document.getElementById(`x-input-${i}`).value.trim();
+            return parseFloat(val);
+          });
+          const yUserValues = q.yValues.map((_, i) => {
+            const val = document.getElementById(`y-input-${i}`).value.trim();
+            return parseFloat(val);
+          });
+
+          const xCorrect = q.xValues.map(v => parseFloat(v.toFixed(5)));
+          const yCorrect = q.yValues.map(v => parseFloat(v.toFixed(5)));
+
+          if (arraysEqualNumbers(xUserValues, xCorrect) && arraysEqualNumbers(yUserValues, yCorrect)) {
+            feedback.textContent = "Correct!";
+            score++;
+          } else {
+            feedback.innerHTML = `Incorrect.<br>Correct x-axis values: <strong>${q.xValues.join(", ")}</strong><br>Correct y-axis values: <strong>${q.yValues.join(", ")}</strong>`;
+          }
+          nextBtn.style.display = "inline-block";
+          disableInputs();
+          updateScore();
+        };
+
       } else if (q.type === "axis-values") {
+        // Axis-values question positive only: text inputs below question
         answerArea.innerHTML = `
           <label for="x-values-input">x-axis values (comma separated): </label><br />
           <input type="text" id="x-values-input" autocomplete="off" style="width: 100%;" />
@@ -405,6 +525,7 @@
     function arraysEqualNumbers(a, b) {
       if (a.length !== b.length) return false;
       for (let i = 0; i < a.length; i++) {
+        if (isNaN(a[i]) || isNaN(b[i])) return false;
         if (Math.abs(a[i] - b[i]) > 0.0001) return false;
       }
       return true;
