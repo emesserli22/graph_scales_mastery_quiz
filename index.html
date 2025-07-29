@@ -259,6 +259,7 @@
           - The interval for the x-axis is ${formatScale(xScale)}<br>
           - The interval for the y-axis is ${formatScale(yScale)}<br>
           - There are ${intervals} intervals on each side of zero, so please provide the first ${intervals * 2 + 1} values starting from negative to positive.<br>
+          - Please list the values in order from smallest to largest.<br>
           Question: List the values on the x-axis and y-axis at each interval.`;
       } else {
         xValues = Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5));
@@ -267,6 +268,7 @@
           - The interval for the x-axis is ${formatScale(xScale)}<br>
           - The interval for the y-axis is ${formatScale(yScale)}<br>
           - There are ${intervals} intervals on each axis, so please provide the first ${intervals + 1} values starting at 0.<br>
+          - Please list the values in order from smallest to largest.<br>
           Question: List the values on the x-axis and y-axis at each interval.`;
       }
 
