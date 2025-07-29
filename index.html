@@ -30,7 +30,8 @@
     input[type="text"] {
       font-size: 16px;
       padding: 5px;
-      width: 100px;
+      width: 100%;
+      max-width: 300px;
     }
     #score {
       font-weight: bold;
@@ -73,36 +74,34 @@
     // canvas: canvas element
     // xScale, yScale: scale per interval
     // quadrants: 1 or 4
-    function drawGrid(canvas, xScale, yScale, quadrants) {
+    // labelEveryOtherTick: boolean - if true, label only every other tick
+    function drawGrid(canvas, xScale, yScale, quadrants, labelEveryOtherTick = false) {
       const ctx = canvas.getContext('2d');
       const width = canvas.width;
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
-      // Grid settings
-      const margin = 40; // margin for labels
+      const margin = 40;
       const gridWidth = width - 2 * margin;
       const gridHeight = height - 2 * margin;
 
-      // Number of intervals on each axis
-      // For quadrant 1: 10 intervals from 0 to 10 * scale
-      // For 4 quadrants: 5 intervals each side (negative and positive)
       const intervalsX = quadrants === 1 ? 10 : 5;
       const intervalsY = quadrants === 1 ? 10 : 5;
 
-      // Calculate pixels per interval
-      const pxPerIntervalX = gridWidth / (intervalsX * (quadrants === 4 ? 2 : 1));
-      const pxPerIntervalY = gridHeight / (intervalsY * (quadrants === 4 ? 2 : 1));
+      const totalIntervalsX = intervalsX * (quadrants === 4 ? 2 : 1);
+      const totalIntervalsY = intervalsY * (quadrants === 4 ? 2 : 1);
 
-      // Origin coordinates in canvas pixels
+      const pxPerIntervalX = gridWidth / totalIntervalsX;
+      const pxPerIntervalY = gridHeight / totalIntervalsY;
+
       const originX = quadrants === 1 ? margin : margin + intervalsX * pxPerIntervalX;
       const originY = quadrants === 1 ? height - margin : margin + intervalsY * pxPerIntervalY;
 
       ctx.strokeStyle = '#aaa';
       ctx.lineWidth = 1;
 
-      // Draw vertical grid lines
-      for (let i = 0; i <= intervalsX * (quadrants === 4 ? 2 : 1); i++) {
+      // Vertical grid lines
+      for (let i = 0; i <= totalIntervalsX; i++) {
         const x = margin + i * pxPerIntervalX;
         ctx.beginPath();
         ctx.moveTo(x, margin);
@@ -110,8 +109,8 @@
         ctx.stroke();
       }
 
-      // Draw horizontal grid lines
-      for (let i = 0; i <= intervalsY * (quadrants === 4 ? 2 : 1); i++) {
+      // Horizontal grid lines
+      for (let i = 0; i <= totalIntervalsY; i++) {
         const y = margin + i * pxPerIntervalY;
         ctx.beginPath();
         ctx.moveTo(margin, y);
@@ -119,7 +118,7 @@
         ctx.stroke();
       }
 
-      // Draw axes
+      // Axes
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 2;
 
@@ -140,8 +139,8 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
 
-      // Draw x-axis tick marks and labels
-      for (let i = 0; i <= intervalsX * (quadrants === 4 ? 2 : 1); i++) {
+      // x-axis ticks and labels
+      for (let i = 0; i <= totalIntervalsX; i++) {
         const x = margin + i * pxPerIntervalX;
         const tickHeight = 6;
         ctx.beginPath();
@@ -149,21 +148,23 @@
         ctx.lineTo(x, originY + tickHeight / 2);
         ctx.stroke();
 
-        // Calculate label value
-        let labelValue;
-        if (quadrants === 1) {
-          labelValue = formatScale(xScale * i);
-        } else {
-          labelValue = formatScale(xScale * (i - intervalsX));
+        // Label every tick or every other tick
+        if (!labelEveryOtherTick || i % 2 === 0) {
+          let labelValue;
+          if (quadrants === 1) {
+            labelValue = formatScale(xScale * i);
+          } else {
+            labelValue = formatScale(xScale * (i - intervalsX));
+          }
+          ctx.fillText(labelValue, x, originY + tickHeight + 2);
         }
-        ctx.fillText(labelValue, x, originY + tickHeight + 2);
       }
 
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
 
-      // Draw y-axis tick marks and labels
-      for (let i = 0; i <= intervalsY * (quadrants === 4 ? 2 : 1); i++) {
+      // y-axis ticks and labels
+      for (let i = 0; i <= totalIntervalsY; i++) {
         const y = margin + i * pxPerIntervalY;
         const tickWidth = 6;
         ctx.beginPath();
@@ -171,18 +172,16 @@
         ctx.lineTo(originX + tickWidth / 2, y);
         ctx.stroke();
 
-        // Calculate label value (y-axis labels go from top to bottom)
-        let labelValue;
-        if (quadrants === 1) {
-          labelValue = formatScale(yScale * (intervalsY - i));
-        } else {
-          labelValue = formatScale(yScale * (intervalsY - i));
+        if (!labelEveryOtherTick || i % 2 === 0) {
+          // y-axis labels go top to bottom
+          let labelValue = formatScale(yScale * (intervalsY - i));
+          ctx.fillText(labelValue, originX - tickWidth - 4, y);
         }
-        ctx.fillText(labelValue, originX - tickWidth - 4, y);
       }
     }
 
-    function generateScaleQuestion(quadrants) {
+    // Generate scale-identify question with optional partial labels
+    function generateScaleQuestion(quadrants, partialLabels = false) {
       const xScale = scales[Math.floor(Math.random() * scales.length)];
       const yScale = scales[Math.floor(Math.random() * scales.length)];
 
@@ -206,7 +205,8 @@
         (Hint: The grid lines are evenly spaced according to the scale.)`,
         xScale,
         yScale,
-        quadrants
+        quadrants,
+        partialLabels
       };
     }
 
@@ -220,25 +220,36 @@
         questionText: `Write the values on the axes below given the following scales:<br>
         - The interval for the x-axis is ${formatScale(xScale)}<br>
         - The interval for the y-axis is ${formatScale(yScale)}<br>
-        - There are ${intervals} intervals on each axis, starting at 0.<br>
+        - There are 5 intervals on each axis, so please provide the first 6 values starting at 0.<br>
         Question: List the values on the x-axis and y-axis at each interval.`,
         xValues: Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5)),
         yValues: Array.from({length: intervals + 1}, (_, i) => +(yScale * i).toFixed(5))
       };
     }
 
+    // Build questions array with 5 scale-identify and 2 axis-values questions
     const questions = [];
 
+    // For 5 scale-identify questions, randomly pick 2 to have partial labels
+    const partialLabelIndices = new Set();
+    while (partialLabelIndices.size < 2) {
+      partialLabelIndices.add(Math.floor(Math.random() * 5));
+    }
+
+    // 2 Quadrant 1 only scale-identify questions
     for (let i = 0; i < 2; i++) {
-      questions.push(generateScaleQuestion(1));
+      questions.push(generateScaleQuestion(1, partialLabelIndices.has(i)));
     }
-    for (let i = 0; i < 3; i++) {
-      questions.push(generateScaleQuestion(4));
+    // 3 all quadrants scale-identify questions
+    for (let i = 2; i < 5; i++) {
+      questions.push(generateScaleQuestion(4, partialLabelIndices.has(i)));
     }
+    // 2 axis-values questions
     for (let i = 0; i < 2; i++) {
       questions.push(generateAxisValuesQuestion());
     }
 
+    // Shuffle questions
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -270,13 +281,12 @@
       const graphContainer = document.getElementById("graph-container");
 
       if (q.type === "scale-identify") {
-        // Create canvas for graph
         const canvas = document.createElement("canvas");
         canvas.width = 500;
         canvas.height = 500;
         graphContainer.appendChild(canvas);
 
-        drawGrid(canvas, q.xScale, q.yScale, q.quadrants);
+        drawGrid(canvas, q.xScale, q.yScale, q.quadrants, q.partialLabels);
 
         answerArea.innerHTML = `
           <label for="x-scale-input">Scale on x-axis: </label>
@@ -323,17 +333,17 @@
             feedback.textContent = "Please enter values for both axes.";
             return;
           }
-          const xUserValues = xInput.split(",").map(s => s.trim());
-          const yUserValues = yInput.split(",").map(s => s.trim());
+          const xUserValues = xInput.split(",").map(s => parseFloat(s.trim()));
+          const yUserValues = yInput.split(",").map(s => parseFloat(s.trim()));
 
-          const xCorrect = q.xValues.map(v => formatScale(v));
-          const yCorrect = q.yValues.map(v => formatScale(v));
+          const xCorrect = q.xValues.map(v => parseFloat(v.toFixed(5)));
+          const yCorrect = q.yValues.map(v => parseFloat(v.toFixed(5)));
 
-          if (arraysEqual(xUserValues, xCorrect) && arraysEqual(yUserValues, yCorrect)) {
+          if (arraysEqualNumbers(xUserValues, xCorrect) && arraysEqualNumbers(yUserValues, yCorrect)) {
             feedback.textContent = "Correct!";
             score++;
           } else {
-            feedback.innerHTML = `Incorrect.<br>Correct x-axis values: <strong>${xCorrect.join(", ")}</strong><br>Correct y-axis values: <strong>${yCorrect.join(", ")}</strong>`;
+            feedback.innerHTML = `Incorrect.<br>Correct x-axis values: <strong>${q.xValues.join(", ")}</strong><br>Correct y-axis values: <strong>${q.yValues.join(", ")}</strong>`;
           }
           nextBtn.style.display = "inline-block";
           disableInputs();
@@ -349,10 +359,10 @@
       });
     }
 
-    function arraysEqual(a, b) {
+    function arraysEqualNumbers(a, b) {
       if (a.length !== b.length) return false;
       for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
+        if (Math.abs(a[i] - b[i]) > 0.0001) return false;
       }
       return true;
     }
