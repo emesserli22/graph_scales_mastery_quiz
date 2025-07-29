@@ -53,7 +53,6 @@
       margin-left: auto;
       margin-right: auto;
     }
-    /* Container for inputs on graph */
     .input-container {
       position: relative;
       width: 500px;
@@ -85,16 +84,12 @@
       return scale.toString();
     }
 
-    // Helper: generate random subset of tick indices to label (excluding first tick)
-    // totalTicks: total number of ticks on axis
-    // minLabels, maxLabels: range of how many ticks to label (excluding first blank)
     function randomTickLabels(totalTicks, minLabels, maxLabels) {
       const count = Math.floor(Math.random() * (maxLabels - minLabels + 1)) + minLabels;
       const possibleTicks = [];
       for (let i = 1; i < totalTicks; i++) {
         possibleTicks.push(i);
       }
-      // Shuffle and pick count ticks
       for (let i = possibleTicks.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [possibleTicks[i], possibleTicks[j]] = [possibleTicks[j], possibleTicks[i]];
@@ -102,14 +97,7 @@
       return possibleTicks.slice(0, count).sort((a,b) => a-b);
     }
 
-    // Draw Cartesian grid on canvas
-    // Parameters:
-    // canvas: canvas element
-    // xScale, yScale: scale per interval
-    // quadrants: 1 or 4
-    // partialLabels: boolean - if true, label only some ticks with first tick blank
-    // partialLabelIndicesX, partialLabelIndicesY: arrays of tick indices to label (for partialLabels)
-    function drawGrid(canvas, xScale, yScale, quadrants, partialLabels = false, partialLabelIndicesX = [], partialLabelIndicesY = []) {
+    function drawGrid(canvas, xScale, yScale, quadrants, partialLabels = false, partialLabelIndicesX = [], partialLabelIndicesY = [], hideLabels = false) {
       const ctx = canvas.getContext('2d');
       const width = canvas.width;
       const height = canvas.height;
@@ -134,7 +122,6 @@
       ctx.strokeStyle = '#aaa';
       ctx.lineWidth = 1;
 
-      // Vertical grid lines
       for (let i = 0; i <= totalIntervalsX; i++) {
         const x = margin + i * pxPerIntervalX;
         ctx.beginPath();
@@ -143,7 +130,6 @@
         ctx.stroke();
       }
 
-      // Horizontal grid lines
       for (let i = 0; i <= totalIntervalsY; i++) {
         const y = margin + i * pxPerIntervalY;
         ctx.beginPath();
@@ -152,17 +138,14 @@
         ctx.stroke();
       }
 
-      // Axes
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 2;
 
-      // x-axis
       ctx.beginPath();
       ctx.moveTo(margin, originY);
       ctx.lineTo(width - margin, originY);
       ctx.stroke();
 
-      // y-axis
       ctx.beginPath();
       ctx.moveTo(originX, margin);
       ctx.lineTo(originX, height - margin);
@@ -173,7 +156,6 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
 
-      // x-axis ticks and labels
       for (let i = 0; i <= totalIntervalsX; i++) {
         const x = margin + i * pxPerIntervalX;
         const tickHeight = 6;
@@ -182,11 +164,14 @@
         ctx.lineTo(x, originY + tickHeight / 2);
         ctx.stroke();
 
-        // Label logic
+        if (hideLabels) continue;
+
         if (partialLabels) {
-          // First tick label blank
           if (i === 0) continue;
-          // Label only if i in partialLabelIndicesX
+          if (quadrants === 4) {
+            const originIndex = intervalsX;
+            if (i === originIndex - 1 || i === originIndex + 1) continue;
+          }
           if (!partialLabelIndicesX.includes(i)) continue;
         }
 
@@ -202,7 +187,6 @@
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
 
-      // y-axis ticks and labels
       for (let i = 0; i <= totalIntervalsY; i++) {
         const y = margin + i * pxPerIntervalY;
         const tickWidth = 6;
@@ -211,18 +195,22 @@
         ctx.lineTo(originX + tickWidth / 2, y);
         ctx.stroke();
 
+        if (hideLabels) continue;
+
         if (partialLabels) {
           if (i === 0) continue;
+          if (quadrants === 4) {
+            const originIndex = intervalsY;
+            if (i === originIndex - 1 || i === originIndex + 1) continue;
+          }
           if (!partialLabelIndicesY.includes(i)) continue;
         }
 
-        // y-axis labels go top to bottom
         let labelValue = formatScale(yScale * (intervalsY - i));
         ctx.fillText(labelValue, originX - tickWidth - 4, y);
       }
     }
 
-    // Generate scale-identify question with optional partial labels and tick label indices
     function generateScaleQuestion(quadrants, partialLabels = false) {
       const xScale = scales[Math.floor(Math.random() * scales.length)];
       const yScale = scales[Math.floor(Math.random() * scales.length)];
@@ -238,7 +226,6 @@
         quadrantDesc = "All four quadrants (negative and positive x and y)";
       }
 
-      // For partial labels, generate random tick label indices for x and y axes
       let partialLabelIndicesX = [];
       let partialLabelIndicesY = [];
       if (partialLabels) {
@@ -247,7 +234,6 @@
         const totalTicksX = intervalsX * (quadrants === 4 ? 2 : 1);
         const totalTicksY = intervalsY * (quadrants === 4 ? 2 : 1);
 
-        // Label between 3 and 6 ticks (excluding first tick)
         partialLabelIndicesX = randomTickLabels(totalTicksX, 3, 6);
         partialLabelIndicesY = randomTickLabels(totalTicksY, 3, 6);
       }
@@ -268,7 +254,6 @@
       };
     }
 
-    // Generate axis-values question, optionally with negatives
     function generateAxisValuesQuestion(includeNegatives = false) {
       const xScale = scales[Math.floor(Math.random() * scales.length)];
       const yScale = scales[Math.floor(Math.random() * scales.length)];
@@ -277,7 +262,6 @@
       let xValues, yValues, questionText;
 
       if (includeNegatives) {
-        // Values from -intervals to +intervals
         xValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(xScale * (i - intervals)).toFixed(5));
         yValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(yScale * (i - intervals)).toFixed(5));
         questionText = `Write the values on the axes below given the following scales:<br>
@@ -286,7 +270,6 @@
           - There are ${intervals} intervals on each side of zero, so please provide the first ${intervals * 2 + 1} values starting from negative to positive.<br>
           Question: List the values on the x-axis and y-axis at each interval.`;
       } else {
-        // Positive only as before
         xValues = Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5));
         yValues = Array.from({length: intervals + 1}, (_, i) => +(yScale * i).toFixed(5));
         questionText = `Write the values on the axes below given the following scales:<br>
@@ -305,35 +288,27 @@
       };
     }
 
-    // Build questions array with 10 questions total:
-    // 5 scale-identify (2 with partial labels), 5 axis-values (2 with negatives)
     const questions = [];
 
-    // Pick 2 unique indices from 0 to 4 for partial label scale-identify questions
     const partialLabelIndices = new Set();
     while (partialLabelIndices.size < 2) {
       partialLabelIndices.add(Math.floor(Math.random() * 5));
     }
 
-    // 2 Quadrant 1 only scale-identify questions
     for (let i = 0; i < 2; i++) {
       questions.push(generateScaleQuestion(1, partialLabelIndices.has(i)));
     }
-    // 3 all quadrants scale-identify questions
     for (let i = 2; i < 5; i++) {
       questions.push(generateScaleQuestion(4, partialLabelIndices.has(i)));
     }
 
-    // 3 axis-values questions positive only
     for (let i = 0; i < 3; i++) {
       questions.push(generateAxisValuesQuestion(false));
     }
-    // 2 axis-values questions with negatives
     for (let i = 0; i < 2; i++) {
       questions.push(generateAxisValuesQuestion(true));
     }
 
-    // Shuffle all questions
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -370,7 +345,7 @@
         canvas.height = 500;
         graphContainer.appendChild(canvas);
 
-        drawGrid(canvas, q.xScale, q.yScale, q.quadrants, q.partialLabels, q.partialLabelIndicesX, q.partialLabelIndicesY);
+        drawGrid(canvas, q.xScale, q.yScale, q.quadrants, q.partialLabels, q.partialLabelIndicesX, q.partialLabelIndicesY, false);
 
         answerArea.innerHTML = `
           <label for="x-scale-input">Scale on x-axis: </label>
@@ -400,17 +375,14 @@
           updateScore();
         };
       } else if (q.type === "axis-values" && q.includeNegatives) {
-        // Axis-values question with negatives: inputs on graph
-
         const canvas = document.createElement("canvas");
         canvas.width = 500;
         canvas.height = 500;
         graphContainer.appendChild(canvas);
 
-        // Draw grid with all labels visible
-        drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false);
+        // Draw grid with no labels
+        drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false, [], [], true);
 
-        // Create container for inputs positioned over canvas
         const inputContainer = document.createElement("div");
         inputContainer.className = "input-container";
         graphContainer.appendChild(inputContainer);
@@ -425,7 +397,6 @@
         const originX = margin + intervalsX / 2 * pxPerIntervalX;
         const originY = margin + intervalsY / 2 * pxPerIntervalY;
 
-        // Create x-axis inputs
         q.xValues.forEach((val, i) => {
           const input = document.createElement("input");
           input.type = "text";
@@ -437,7 +408,6 @@
           inputContainer.appendChild(input);
         });
 
-        // Create y-axis inputs
         q.yValues.forEach((val, i) => {
           const input = document.createElement("input");
           input.type = "text";
@@ -449,7 +419,6 @@
           inputContainer.appendChild(input);
         });
 
-        // Submit button below inputs
         answerArea.innerHTML = `<button id="submit-btn">Submit</button>`;
         answerArea.appendChild(inputContainer);
 
@@ -478,7 +447,6 @@
         };
 
       } else if (q.type === "axis-values") {
-        // Axis-values question positive only: text inputs below question
         answerArea.innerHTML = `
           <label for="x-values-input">x-axis values (comma separated): </label><br />
           <input type="text" id="x-values-input" autocomplete="off" style="width: 100%;" />
