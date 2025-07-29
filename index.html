@@ -171,6 +171,8 @@
           if (quadrants === 4) {
             const originIndex = intervalsX;
             if (i === originIndex - 1 || i === originIndex + 1) continue;
+          } else if (quadrants === 1) {
+            if (i === 1) continue;
           }
           if (!partialLabelIndicesX.includes(i)) continue;
         }
@@ -202,6 +204,8 @@
           if (quadrants === 4) {
             const originIndex = intervalsY;
             if (i === originIndex - 1 || i === originIndex + 1) continue;
+          } else if (quadrants === 1) {
+            if (i === 1) continue;
           }
           if (!partialLabelIndicesY.includes(i)) continue;
         }
@@ -380,11 +384,13 @@
         canvas.height = 500;
         graphContainer.appendChild(canvas);
 
-        // Draw grid with no labels
         drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false, [], [], true);
 
         const inputContainer = document.createElement("div");
         inputContainer.className = "input-container";
+        inputContainer.style.position = "relative";
+        inputContainer.style.width = canvas.width + "px";
+        inputContainer.style.height = canvas.height + "px";
         graphContainer.appendChild(inputContainer);
 
         const margin = 40;
@@ -402,6 +408,7 @@
           input.type = "text";
           input.size = 4;
           input.className = "axis-input";
+          input.style.position = "absolute";
           input.style.left = (margin + i * pxPerIntervalX - 20) + "px";
           input.style.top = (originY + 10) + "px";
           input.id = `x-input-${i}`;
@@ -413,6 +420,7 @@
           input.type = "text";
           input.size = 4;
           input.className = "axis-input";
+          input.style.position = "absolute";
           input.style.left = (originX - 50) + "px";
           input.style.top = (margin + i * pxPerIntervalY - 10) + "px";
           input.id = `y-input-${i}`;
