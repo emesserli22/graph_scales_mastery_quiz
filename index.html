@@ -24,9 +24,10 @@
       position: relative;
     }
     button {
-      margin-top: 10px;
-      padding: 8px 15px;
+      margin: 10px 5px;
+      padding: 10px 20px;
       font-size: 16px;
+      cursor: pointer;
     }
     input[type="text"] {
       font-size: 16px;
@@ -53,13 +54,37 @@
       margin-left: auto;
       margin-right: auto;
     }
+    .paper-answer-space {
+      border-bottom: 1px solid black;
+      height: 25px;
+      margin: 10px 0 20px 0;
+      width: 100%;
+      max-width: 400px;
+    }
+    #start-screen {
+      text-align: center;
+      margin-top: 50px;
+    }
+    #quiz-container, #paper-quiz-container {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>Graph Scale Identification Quiz</h1>
-  <div id="quiz-container"></div>
-  <button id="next-btn" style="display:none;">Next Question</button>
-  <div id="score"></div>
+
+  <div id="start-screen">
+    <button id="start-interactive-btn">Start Interactive Quiz</button>
+    <button id="start-paper-btn">Generate Paper Quiz</button>
+  </div>
+
+  <div id="quiz-container">
+    <div id="quiz-content"></div>
+    <button id="next-btn" style="display:none;">Next Question</button>
+    <div id="score"></div>
+  </div>
+
+  <div id="paper-quiz-container"></div>
 
   <script>
     const scales = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 0.1, 0.2, 0.25, 0.5];
@@ -82,124 +107,6 @@
         [possibleTicks[i], possibleTicks[j]] = [possibleTicks[j], possibleTicks[i]];
       }
       return possibleTicks.slice(0, count).sort((a,b) => a-b);
-    }
-
-    function drawGrid(canvas, xScale, yScale, quadrants, partialLabels = false, partialLabelIndicesX = [], partialLabelIndicesY = [], hideLabels = false) {
-      const ctx = canvas.getContext('2d');
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
-
-      const margin = 40;
-      const gridWidth = width - 2 * margin;
-      const gridHeight = height - 2 * margin;
-
-      const intervalsX = quadrants === 1 ? 10 : 5;
-      const intervalsY = quadrants === 1 ? 10 : 5;
-
-      const totalIntervalsX = intervalsX * (quadrants === 4 ? 2 : 1);
-      const totalIntervalsY = intervalsY * (quadrants === 4 ? 2 : 1);
-
-      const pxPerIntervalX = gridWidth / totalIntervalsX;
-      const pxPerIntervalY = gridHeight / totalIntervalsY;
-
-      const originX = quadrants === 1 ? margin : margin + intervalsX * pxPerIntervalX;
-      const originY = quadrants === 1 ? height - margin : margin + intervalsY * pxPerIntervalY;
-
-      ctx.strokeStyle = '#aaa';
-      ctx.lineWidth = 1;
-
-      for (let i = 0; i <= totalIntervalsX; i++) {
-        const x = margin + i * pxPerIntervalX;
-        ctx.beginPath();
-        ctx.moveTo(x, margin);
-        ctx.lineTo(x, height - margin);
-        ctx.stroke();
-      }
-
-      for (let i = 0; i <= totalIntervalsY; i++) {
-        const y = margin + i * pxPerIntervalY;
-        ctx.beginPath();
-        ctx.moveTo(margin, y);
-        ctx.lineTo(width - margin, y);
-        ctx.stroke();
-      }
-
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 2;
-
-      ctx.beginPath();
-      ctx.moveTo(margin, originY);
-      ctx.lineTo(width - margin, originY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(originX, margin);
-      ctx.lineTo(originX, height - margin);
-      ctx.stroke();
-
-      ctx.fillStyle = 'black';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-
-      for (let i = 0; i <= totalIntervalsX; i++) {
-        const x = margin + i * pxPerIntervalX;
-        const tickHeight = 6;
-        ctx.beginPath();
-        ctx.moveTo(x, originY - tickHeight / 2);
-        ctx.lineTo(x, originY + tickHeight / 2);
-        ctx.stroke();
-
-        if (hideLabels) continue;
-
-        if (partialLabels) {
-          if (i === 0) continue;
-          if (quadrants === 4) {
-            const originIndex = intervalsX;
-            if (i === originIndex - 1 || i === originIndex + 1) continue;
-          } else if (quadrants === 1) {
-            if (i === 1) continue;
-          }
-          if (!partialLabelIndicesX.includes(i)) continue;
-        }
-
-        let labelValue;
-        if (quadrants === 1) {
-          labelValue = formatScale(xScale * i);
-        } else {
-          labelValue = formatScale(xScale * (i - intervalsX));
-        }
-        ctx.fillText(labelValue, x, originY + tickHeight + 2);
-      }
-
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-
-      for (let i = 0; i <= totalIntervalsY; i++) {
-        const y = margin + i * pxPerIntervalY;
-        const tickWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(originX - tickWidth / 2, y);
-        ctx.lineTo(originX + tickWidth / 2, y);
-        ctx.stroke();
-
-        if (hideLabels) continue;
-
-        if (partialLabels) {
-          if (i === 0) continue;
-          if (quadrants === 4) {
-            const originIndex = intervalsY;
-            if (i === originIndex - 1 || i === originIndex + 1) continue;
-          } else if (quadrants === 1) {
-            if (i === 1) continue;
-          }
-          if (!partialLabelIndicesY.includes(i)) continue;
-        }
-
-        let labelValue = formatScale(yScale * (intervalsY - i));
-        ctx.fillText(labelValue, originX - tickWidth - 4, y);
-      }
     }
 
     function generateScaleQuestion(quadrants, partialLabels = false) {
@@ -281,6 +188,7 @@
       };
     }
 
+    // Build questions array
     const questions = [];
 
     const partialLabelIndices = new Set();
@@ -310,17 +218,40 @@
     }
     shuffle(questions);
 
+    // Elements
+    const startScreen = document.getElementById("start-screen");
+    const quizContainer = document.getElementById("quiz-container");
+    const quizContent = document.getElementById("quiz-content");
+    const nextBtn = document.getElementById("next-btn");
+    const scoreDiv = document.getElementById("score");
+    const paperQuizContainer = document.getElementById("paper-quiz-container");
+
     let currentQuestionIndex = 0;
     let score = 0;
 
-    const quizContainer = document.getElementById("quiz-container");
-    const nextBtn = document.getElementById("next-btn");
-    const scoreDiv = document.getElementById("score");
+    // Show interactive quiz
+    document.getElementById("start-interactive-btn").onclick = () => {
+      startScreen.style.display = "none";
+      paperQuizContainer.style.display = "none";
+      quizContainer.style.display = "block";
+      currentQuestionIndex = 0;
+      score = 0;
+      showQuestion();
+      updateScore();
+    };
+
+    // Show paper quiz
+    document.getElementById("start-paper-btn").onclick = () => {
+      startScreen.style.display = "none";
+      quizContainer.style.display = "none";
+      paperQuizContainer.style.display = "block";
+      generatePaperQuiz();
+    };
 
     function showQuestion() {
       nextBtn.style.display = "none";
       const q = questions[currentQuestionIndex];
-      quizContainer.innerHTML = `<div class="question">
+      quizContent.innerHTML = `<div class="question">
         <p><strong>Question ${currentQuestionIndex + 1} of ${questions.length}:</strong></p>
         <p>${q.questionText}</p>
         <div id="graph-container"></div>
@@ -434,8 +365,35 @@
       scoreDiv.textContent = `Score: ${score} / ${questions.length}`;
     }
 
-    showQuestion();
-    updateScore();
+    // Generate paper quiz HTML
+    function generatePaperQuiz() {
+      paperQuizContainer.innerHTML = "";
+      questions.forEach((q, i) => {
+        const div = document.createElement("div");
+        div.className = "question";
+        let questionHTML = `<p><strong>Question ${i + 1} of ${questions.length}:</strong></p>`;
+        questionHTML += `<p>${q.questionText}</p>`;
+
+        if (q.type === "scale-identify") {
+          questionHTML += `<p><em>Answer: ____________________________</em></p>`;
+          questionHTML += `<p><em>Answer: ____________________________</em></p>`;
+        } else if (q.type === "axis-values") {
+          // Provide blank lines for answers
+          questionHTML += `<p><em>Write the x-axis values here:</em></p>`;
+          questionHTML += `<div class="paper-answer-space"></div>`;
+          questionHTML += `<p><em>Write the y-axis values here:</em></p>`;
+          questionHTML += `<div class="paper-answer-space"></div>`;
+        }
+
+        div.innerHTML = questionHTML;
+        paperQuizContainer.appendChild(div);
+      });
+      // Add a print button
+      const printBtn = document.createElement("button");
+      printBtn.textContent = "Print / Save as PDF";
+      printBtn.onclick = () => window.print();
+      paperQuizContainer.appendChild(printBtn);
+    }
   </script>
 </body>
 </html>
