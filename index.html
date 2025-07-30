@@ -24,10 +24,9 @@
       position: relative;
     }
     button {
-      margin: 10px 5px;
-      padding: 10px 20px;
+      margin-top: 10px;
+      padding: 8px 15px;
       font-size: 16px;
-      cursor: pointer;
     }
     input[type="text"] {
       font-size: 16px;
@@ -54,43 +53,13 @@
       margin-left: auto;
       margin-right: auto;
     }
-    .paper-answer-space {
-      border-bottom: 1px solid black;
-      height: 25px;
-      margin: 10px 0 20px 0;
-      width: 100%;
-      max-width: 400px;
-    }
-    #start-screen {
-      text-align: center;
-      margin-top: 50px;
-    }
-    #quiz-container, #paper-quiz-container {
-      display: none;
-    }
-    .paper-grid {
-      margin: 10px auto 20px auto;
-      display: block;
-      border: 1px solid #000;
-      background: white;
-    }
   </style>
 </head>
 <body>
   <h1>Graph Scale Identification Quiz</h1>
-
-  <div id="start-screen">
-    <button id="start-interactive-btn">Start Interactive Quiz</button>
-    <button id="start-paper-btn">Generate Paper Quiz</button>
-  </div>
-
-  <div id="quiz-container">
-    <div id="quiz-content"></div>
-    <button id="next-btn" style="display:none;">Next Question</button>
-    <div id="score"></div>
-  </div>
-
-  <div id="paper-quiz-container"></div>
+  <div id="quiz-container"></div>
+  <button id="next-btn" style="display:none;">Next Question</button>
+  <div id="score"></div>
 
   <script>
     const scales = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 0.1, 0.2, 0.25, 0.5];
@@ -121,7 +90,7 @@
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
-      const margin = 30;
+      const margin = 40;
       const gridWidth = width - 2 * margin;
       const gridHeight = height - 2 * margin;
 
@@ -169,10 +138,8 @@
       ctx.lineTo(originX, height - margin);
       ctx.stroke();
 
-      if (hideLabels) return;
-
       ctx.fillStyle = 'black';
-      ctx.font = '10px Arial';
+      ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
 
@@ -183,6 +150,8 @@
         ctx.moveTo(x, originY - tickHeight / 2);
         ctx.lineTo(x, originY + tickHeight / 2);
         ctx.stroke();
+
+        if (hideLabels) continue;
 
         if (partialLabels) {
           if (i === 0) continue;
@@ -214,6 +183,8 @@
         ctx.moveTo(originX - tickWidth / 2, y);
         ctx.lineTo(originX + tickWidth / 2, y);
         ctx.stroke();
+
+        if (hideLabels) continue;
 
         if (partialLabels) {
           if (i === 0) continue;
@@ -284,13 +255,21 @@
       if (includeNegatives) {
         xValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(xScale * (i - intervals)).toFixed(5));
         yValues = Array.from({length: intervals * 2 + 1}, (_, i) => +(yScale * (i - intervals)).toFixed(5));
-        questionText = `On the coordinate grid below, label the x-axis so that it has a scale (or interval) of ${formatScale(xScale)} and the y-axis so that it has a scale (or interval) of ${formatScale(yScale)}.<br>
-          - There are ${intervals} intervals on each side of zero, so please label the axes accordingly.<br>`;
+        questionText = `Write the values on the axes below given the following scales:<br>
+          - The interval for the x-axis is ${formatScale(xScale)}<br>
+          - The interval for the y-axis is ${formatScale(yScale)}<br>
+          - There are ${intervals} intervals on each side of zero, so please provide the first ${intervals * 2 + 1} values starting from negative to positive.<br>
+          - Please list the values in order from smallest to largest.<br>
+          Question: List the values on the x-axis and y-axis at each interval.`;
       } else {
         xValues = Array.from({length: intervals + 1}, (_, i) => +(xScale * i).toFixed(5));
         yValues = Array.from({length: intervals + 1}, (_, i) => +(yScale * i).toFixed(5));
-        questionText = `On the coordinate grid below, label the x-axis so that it has a scale (or interval) of ${formatScale(xScale)} and the y-axis so that it has a scale (or interval) of ${formatScale(yScale)}.<br>
-          - There are ${intervals} intervals on each axis, so please label the axes accordingly.<br>`;
+        questionText = `Write the values on the axes below given the following scales:<br>
+          - The interval for the x-axis is ${formatScale(xScale)}<br>
+          - The interval for the y-axis is ${formatScale(yScale)}<br>
+          - There are ${intervals} intervals on each axis, so please provide the first ${intervals + 1} values starting at 0.<br>
+          - Please list the values in order from smallest to largest.<br>
+          Question: List the values on the x-axis and y-axis at each interval.`;
       }
 
       return {
@@ -331,40 +310,17 @@
     }
     shuffle(questions);
 
-    // Elements
-    const startScreen = document.getElementById("start-screen");
-    const quizContainer = document.getElementById("quiz-container");
-    const quizContent = document.getElementById("quiz-content");
-    const nextBtn = document.getElementById("next-btn");
-    const scoreDiv = document.getElementById("score");
-    const paperQuizContainer = document.getElementById("paper-quiz-container");
-
     let currentQuestionIndex = 0;
     let score = 0;
 
-    // Show interactive quiz
-    document.getElementById("start-interactive-btn").onclick = () => {
-      startScreen.style.display = "none";
-      paperQuizContainer.style.display = "none";
-      quizContainer.style.display = "block";
-      currentQuestionIndex = 0;
-      score = 0;
-      showQuestion();
-      updateScore();
-    };
-
-    // Show paper quiz
-    document.getElementById("start-paper-btn").onclick = () => {
-      startScreen.style.display = "none";
-      quizContainer.style.display = "none";
-      paperQuizContainer.style.display = "block";
-      generatePaperQuiz();
-    };
+    const quizContainer = document.getElementById("quiz-container");
+    const nextBtn = document.getElementById("next-btn");
+    const scoreDiv = document.getElementById("score");
 
     function showQuestion() {
       nextBtn.style.display = "none";
       const q = questions[currentQuestionIndex];
-      quizContent.innerHTML = `<div class="question">
+      quizContainer.innerHTML = `<div class="question">
         <p><strong>Question ${currentQuestionIndex + 1} of ${questions.length}:</strong></p>
         <p>${q.questionText}</p>
         <div id="graph-container"></div>
@@ -478,51 +434,8 @@
       scoreDiv.textContent = `Score: ${score} / ${questions.length}`;
     }
 
-    // Generate paper quiz HTML with blank grids for axis-values questions
-    function generatePaperQuiz() {
-      paperQuizContainer.innerHTML = "";
-      questions.forEach((q, i) => {
-        const div = document.createElement("div");
-        div.className = "question";
-        let questionHTML = `<p><strong>Question ${i + 1} of ${questions.length}:</strong></p>`;
-
-        if (q.type === "scale-identify") {
-          questionHTML += `<p>${q.questionText}</p>`;
-          questionHTML += `<p><em>Answer: ____________________________</em></p>`;
-          questionHTML += `<p><em>Answer: ____________________________</em></p>`;
-        } else if (q.type === "axis-values") {
-          questionHTML += `<p>${q.questionText}</p>`;
-
-          // Create a canvas for blank coordinate grid
-          const canvas = document.createElement("canvas");
-          canvas.width = 300;
-          canvas.height = 300;
-          canvas.className = "paper-grid";
-
-          // Append canvas after question text
-          div.appendChild(canvas);
-
-          // Draw blank grid (no labels)
-          drawGrid(canvas, q.xValues[1] - q.xValues[0], q.yValues[1] - q.yValues[0], 4, false, [], [], true);
-
-          // Add blank lines for answers
-          questionHTML += `<p><em>Write the x-axis values on the grid above.</em></p>`;
-          questionHTML += `<div class="paper-answer-space"></div>`;
-          questionHTML += `<p><em>Write the y-axis values on the grid above.</em></p>`;
-          questionHTML += `<div class="paper-answer-space"></div>`;
-
-          div.innerHTML = questionHTML + div.innerHTML; // prepend questionHTML before canvas
-        }
-
-        paperQuizContainer.appendChild(div);
-      });
-
-      // Add a print button
-      const printBtn = document.createElement("button");
-      printBtn.textContent = "Print / Save as PDF";
-      printBtn.onclick = () => window.print();
-      paperQuizContainer.appendChild(printBtn);
-    }
+    showQuestion();
+    updateScore();
   </script>
 </body>
 </html>
